@@ -29,6 +29,8 @@ parser.add_argument('--epochs', type=int, default=40,
                     help='upper epoch limit')
 parser.add_argument('--batch_size', type=int, default=20, metavar='N',
                     help='batch size')
+
+# TODO: bptt 是指 BackPropagation Through Time 吗，描述是序列长度
 parser.add_argument('--bptt', type=int, default=35,
                     help='sequence length')
 parser.add_argument('--dropout', type=float, default=0.2,
@@ -57,12 +59,14 @@ if torch.cuda.is_available():
     if not args.cuda:
         print("WARNING: You have a CUDA device, so you should probably run with --cuda.")
 
+# 设置使用的设备
 device = torch.device("cuda" if args.cuda else "cpu")
 
 ###############################################################################
 # Load data
 ###############################################################################
 
+# 根据 data 文件夹下的 train, valid, test 数据集，建立字典，并将三篇文本 tokenize 为三个一维张量
 corpus = data.Corpus(args.data)
 
 # Starting from sequential data, batchify arranges the dataset into columns.
@@ -83,9 +87,12 @@ def batchify(data, bsz):
     # Trim off any extra elements that wouldn't cleanly fit (remainders).
     data = data.narrow(0, 0, nbatch * bsz)
     # Evenly divide the data across the bsz batches.
+    # TODO 这里的 contiguous() 的作用是什么，是不是在 view() 函数后面调用会提高效率
+    # 为什么要 t(), 而不直接生成转置后的，即 .view(-1, bsz).contiguous()
     data = data.view(bsz, -1).t().contiguous()
     return data.to(device)
 
+# TODO: eval_batch_size 为什么不调，含义是什么
 eval_batch_size = 10
 train_data = batchify(corpus.train, args.batch_size)
 val_data = batchify(corpus.valid, eval_batch_size)
@@ -95,15 +102,21 @@ test_data = batchify(corpus.test, eval_batch_size)
 # Build the model
 ###############################################################################
 
+# 词典中的总词数，也可以理解为多分类的总类别数
 ntokens = len(corpus.dictionary)
+
 if args.model == 'Transformer':
     model = model.TransformerModel(ntokens, args.emsize, args.nhead, args.nhid, args.nlayers, args.dropout).to(device)
 else:
     model = model.RNNModel(args.model, ntokens, args.emsize, args.nhid, args.nlayers, args.dropout, args.tied).to(device)
 
+# 损失函数为 negative likelihood loss，负最大似然函数
 criterion = nn.NLLLoss()
 
+# 打印词表中出现的不同 word 总个数
 print ("Vocabulary Size: ", ntokens)
+
+# 打印可学习的参数个数，单位转化为 mb
 num_params = sum(p.numel() for p in model.parameters() if p.requires_grad)
 print ("Total number of model parameters: {:.2f}M".format(num_params*1.0/1e6))
 
@@ -111,6 +124,7 @@ print ("Total number of model parameters: {:.2f}M".format(num_params*1.0/1e6))
 # Training code
 ###############################################################################
 
+# TODO 貌似是移除梯度
 def repackage_hidden(h):
     """Wraps hidden states in new Tensors, to detach them from their history."""
 
@@ -130,19 +144,26 @@ def repackage_hidden(h):
 # by the batchify function. The chunks are along dimension 0, corresponding
 # to the seq_len dimension in the LSTM.
 
+# 从原始数据中得到以 i 为起始下标的数据集合，长度为 args.bptt
 def get_batch(source, i):
+    # 最后一批可能不够 args.bptt 的长度，因此需要取最小值
     seq_len = min(args.bptt, len(source) - 1 - i)
+    # TODO: 为什么 target 需要 flatten, data 不需要，是因为我们的最终结果是 softmax 吗
     data = source[i:i+seq_len]
+    # 预测的结果是其后一位开始的句子
     target = source[i+1:i+1+seq_len].view(-1)
     return data, target
 
 
 def evaluate(data_source):
     # Turn on evaluation mode which disables dropout.
+    # 在 eval() 后，不会启用 dropout
     model.eval()
     total_loss = 0.
+    # 所有 word 可能的种类
     ntokens = len(corpus.dictionary)
     if args.model != 'Transformer':
+        # 获得初始 hidden 状态
         hidden = model.init_hidden(eval_batch_size)
     with torch.no_grad():
         for i in range(0, data_source.size(0) - 1, args.bptt):
@@ -151,8 +172,10 @@ def evaluate(data_source):
                 output = model(data)
                 output = output.view(-1, ntokens)
             else:
+                # TODO: 这是调用模型返回结果？
                 output, hidden = model(data, hidden)
                 hidden = repackage_hidden(hidden)
+            # 为什么要乘以 len(data)，是因为最后一批可能长度不足 args.bptt 吗
             total_loss += len(data) * criterion(output, targets).item()
     return total_loss / (len(data_source) - 1)
 
@@ -184,9 +207,11 @@ def train():
         for p in model.parameters():
             p.data.add_(p.grad, alpha=-lr)
 
+        # 这里为什么不乘以 len(data)
         total_loss += loss.item()
 
         if batch % args.log_interval == 0 and batch > 0:
+            # 这里为什么要除以 args.log_interval
             cur_loss = total_loss / args.log_interval
             elapsed = time.time() - start_time
             print('| epoch {:3d} | {:5d}/{:5d} batches | lr {:02.2f} | ms/batch {:5.2f} | '

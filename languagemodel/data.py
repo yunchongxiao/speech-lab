@@ -43,6 +43,7 @@ class Corpus(object):
                 for word in words:
                     ids.append(self.dictionary.word2idx[word])
                 idss.append(torch.tensor(ids).type(torch.int64))
+            # TODO 为什么要使用 cat 连接，而不在之前直接接在一起
             ids = torch.cat(idss)
 
         return ids

@@ -31,6 +31,7 @@ class RNNModel(nn.Module):
         if tie_weights:
             if nhid != ninp:
                 raise ValueError('When using the tied flag, nhid must be equal to emsize')
+            # TODO: 这两个权重的维度应该是转置的关系吧
             self.decoder.weight = self.encoder.weight
 
         self.init_weights()
@@ -41,6 +42,7 @@ class RNNModel(nn.Module):
 
     def init_weights(self):
         initrange = 0.1
+        # TODO: 为什么不初始化 self.encoder.bias 是没有这个参数吗
         nn.init.uniform_(self.encoder.weight, -initrange, initrange)
         nn.init.zeros_(self.decoder.bias)
         nn.init.uniform_(self.decoder.weight, -initrange, initrange)
