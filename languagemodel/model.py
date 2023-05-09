@@ -42,7 +42,7 @@ class RNNModel(nn.Module):
 
     def init_weights(self):
         initrange = 0.1
-        # TODO: 为什么不初始化 self.encoder.bias 是没有这个参数吗
+        # TODO: 为什么不初始化 self.encoder.bias 是 Embedding 没有这个参数吗
         nn.init.uniform_(self.encoder.weight, -initrange, initrange)
         nn.init.zeros_(self.decoder.bias)
         nn.init.uniform_(self.decoder.weight, -initrange, initrange)
@@ -141,6 +141,7 @@ class TransformerModel(nn.Module):
         if has_mask:
             device = src.device
             if self.src_mask is None or self.src_mask.size(0) != len(src):
+                # 给一个长度为 seq 的词序列输入设置 mask，由于最后一批可能长度不足 seq 
                 mask = self._generate_square_subsequent_mask(len(src)).to(device)
                 self.src_mask = mask
         else:

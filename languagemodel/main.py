@@ -30,7 +30,7 @@ parser.add_argument('--epochs', type=int, default=40,
 parser.add_argument('--batch_size', type=int, default=20, metavar='N',
                     help='batch size')
 
-# TODO: bptt 是指 BackPropagation Through Time 吗，描述是序列长度
+# TODO: 描述是序列长度
 parser.add_argument('--bptt', type=int, default=35,
                     help='sequence length')
 parser.add_argument('--dropout', type=float, default=0.2,
@@ -148,7 +148,7 @@ def repackage_hidden(h):
 def get_batch(source, i):
     # 最后一批可能不够 args.bptt 的长度，因此需要取最小值
     seq_len = min(args.bptt, len(source) - 1 - i)
-    # TODO: 为什么 target 需要 flatten, data 不需要，是因为我们的最终结果是 softmax 吗
+    # TODO: 为什么 target 需要变成一维, data 不需要，是因为我们的最终结果是 softmax 吗
     data = source[i:i+seq_len]
     # 预测的结果是其后一位开始的句子
     target = source[i+1:i+1+seq_len].view(-1)
@@ -175,7 +175,7 @@ def evaluate(data_source):
                 # TODO: 这是调用模型返回结果？
                 output, hidden = model(data, hidden)
                 hidden = repackage_hidden(hidden)
-            # 为什么要乘以 len(data)，是因为最后一批可能长度不足 args.bptt 吗
+            # TODO 不太明白总损失的计算，为什么要乘以 len(data)
             total_loss += len(data) * criterion(output, targets).item()
     return total_loss / (len(data_source) - 1)
 
@@ -207,7 +207,7 @@ def train():
         for p in model.parameters():
             p.data.add_(p.grad, alpha=-lr)
 
-        # 这里为什么不乘以 len(data)
+        # 这里为什么和训练的时候不一样，没有乘以 len(data)
         total_loss += loss.item()
 
         if batch % args.log_interval == 0 and batch > 0:

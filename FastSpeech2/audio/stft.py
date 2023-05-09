@@ -14,6 +14,8 @@ from audio.audio_processing import (
 
 class STFT(torch.nn.Module):
     """adapted from Prem Seetharaman's https://github.com/pseeth/pytorch-stft"""
+    """短时傅里叶变换
+    """
 
     def __init__(self, filter_length, hop_length, win_length, window="hann"):
         super(STFT, self).__init__()

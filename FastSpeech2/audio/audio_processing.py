@@ -1,7 +1,7 @@
 import torch
 import numpy as np
-import librosa.util as librosa_util
-from scipy.signal import get_window
+import librosa.util as librosa_util # 音频特征提取
+from scipy.signal import get_window # 信号处理，猜测可能是做傅里叶变换的
 
 
 def window_sumsquare(
